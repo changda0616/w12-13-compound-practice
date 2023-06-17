@@ -14,12 +14,21 @@ import "compound-protocol/contracts/InterestRateModel.sol";
 import "compound-protocol/contracts/SimplePriceOracle.sol";
 import "compound-protocol/contracts/WhitePaperInterestRateModel.sol";
 
-import "openzeppelin/token/ERC20/ERC20.sol";
+import "../src/TestErc20.sol";
 
 contract DeployComp is Script {
-    function setUp() public {}
 
-    function run() public {
+    function run()
+        public
+        returns (
+            Unitroller,
+            Comptroller,
+            SimplePriceOracle,
+            WhitePaperInterestRateModel,
+            CErc20Delegate,
+            CErc20Delegator
+        )
+    {
         uint256 key = vm.envUint("wallet_key");
         address admin = vm.envAddress("wallet");
         vm.startBroadcast(key);
@@ -49,7 +58,7 @@ contract DeployComp is Script {
             );
 
         // prepare undelying ERC20 Token
-        ERC20 Sai = new ERC20("Sai test", "SAI");
+        TestErc20 Sai = new TestErc20("Sai test", "SAI");
 
         // prepare token implementation, CErc20Delegate
         CErc20Delegate cErc20Delegate = new CErc20Delegate();
@@ -58,25 +67,35 @@ contract DeployComp is Script {
             address(Sai),
             ComptrollerInterface(address(unitroller)),
             InterestRateModel(address(whitePaperInterestRateModel)),
-            1, // rate 10 ** 18 / 10 ** 18
+            1 * 1e18, // rate 10 ** 18 / 10 ** 18
             "Compound Sai",
             "cSAI",
             18,
             payable(admin),
             address(cErc20Delegate),
-            new bytes(0x01)
+            ""
         );
 
         cSai._setReserveFactor(0.1 * 1e18);
 
         // Add cSai to unitroller's markets map
         unitrollerProxy._supportMarket(CToken(address(cSai)));
+        
+        priceOracle.setUnderlyingPrice(CToken(address(cSai)), 1e18);
 
         // The borrower can only borrow 70% of the collateral value
         unitrollerProxy._setCollateralFactor(CToken(address(cSai)), 0.7 * 1e18);
 
-        priceOracle.setUnderlyingPrice(CToken(address(cSai)), 1e18);
 
         vm.stopBroadcast();
+
+        return (
+            unitroller,
+            comptroller,
+            priceOracle,
+            whitePaperInterestRateModel,
+            cErc20Delegate,
+            cSai
+        );
     }
 }
