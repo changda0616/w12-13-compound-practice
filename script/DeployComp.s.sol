@@ -43,8 +43,8 @@ contract DeployComp is Script {
         // unitroller accept comptroller
         comptroller._become(unitroller);
 
-        // set close factor at 60%
-        unitrollerProxy._setCloseFactor(0.6 * 1e18);
+        // set close factor at 50%
+        unitrollerProxy._setCloseFactor(0.5 * 1e18);
         // set liquidation incentive at 1.08
         unitrollerProxy._setLiquidationIncentive(1.08 * 1e18);
         // set prepare oracle
